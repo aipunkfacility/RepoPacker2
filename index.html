@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepoPacker (Static)</title>
+    <!-- Подключаем Tailwind CSS для стилей -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключаем библиотеку JSZip для работы с архивами -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Шрифт Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <header class="mb-10 text-center max-w-2xl">
+        <h1 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 mb-4">
+            RepoPacker
+        </h1>
+        <p class="text-slate-400 text-lg">
+            Превратите любой GitHub репозиторий (ZIP) в единый контекстный файл для LLM.
+        </p>
+    </header>
+
+    <main class="w-full max-w-xl bg-slate-800/30 backdrop-blur-sm rounded-2xl border border-slate-700/50 p-6 md:p-8 shadow-2xl">
+        
+        <!-- Сцена 1: Загрузка -->
+        <div id="scene-upload" class="space-y-6">
+            <div class="w-full">
+                <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer bg-slate-800 hover:bg-slate-750 hover:border-blue-500 transition-all duration-300">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <!-- Icon Upload -->
+                        <svg class="w-12 h-12 mb-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="mb-2 text-sm text-slate-300">
+                            <span class="font-semibold">Кликните</span> или перетащите файл
+                        </p>
+                        <p class="text-xs text-slate-500">ZIP архив (GitHub Repo)</p>
+                    </div>
+                    <input type="file" id="fileInput" class="hidden" accept=".zip" />
+                </label>
+            </div>
+            <div class="text-xs text-center text-slate-500">
+                Поддерживает .zip архивы. Обработка выполняется локально в браузере.
+            </div>
+        </div>
+
+        <!-- Сцена 2: Процесс -->
+        <div id="scene-processing" class="hidden py-10 flex flex-col items-center">
+            <div class="w-full bg-slate-700 rounded-full h-2.5 mb-6 overflow-hidden">
+                <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
+            
+            <div class="flex items-center space-x-3 text-blue-300 animate-pulse">
+               <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+               <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+               <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            </div>
+            
+            <p id="statusMessage" class="mt-4 text-lg font-medium text-slate-200">Подготовка...</p>
+        </div>
+
+        <!-- Сцена 3: Готово -->
+        <div id="scene-completed" class="hidden text-center space-y-6 animate-fade-in">
+            <div class="flex justify-center">
+                <div class="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400">
+                    <!-- Icon Check -->
+                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+            </div>
+            
+            <div>
+                <h2 class="text-2xl font-bold text-white mb-2">Архив обработан!</h2>
+                <p class="text-slate-400 mb-1">
+                    Файл <strong id="resultFileName">result.md</strong> готов.
+                </p>
+                <div class="flex justify-center gap-4 text-sm text-slate-500 mt-2">
+                    <span id="resultFileCount">📄 0 файлов</span>
+                    <span id="resultTotalSize">📦 0 KB текста</span>
+                </div>
+            </div>
+
+            <a id="downloadBtn" href="#" download="" class="flex items-center justify-center space-x-2 w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-blue-500/25">
+                <!-- Icon Download -->
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Скачать Markdown</span>
+            </a>
+
+            <button onclick="resetApp()" class="text-slate-500 hover:text-slate-300 text-sm underline decoration-slate-600 hover:decoration-slate-400 underline-offset-4">
+                Обработать другой проект
+            </button>
+        </div>
+
+        <!-- Сцена 4: Ошибка -->
+        <div id="scene-error" class="hidden text-center py-6">
+            <div class="bg-red-500/10 text-red-400 p-4 rounded-lg mb-6 flex items-center justify-center flex-col">
+                <!-- Icon Alert -->
+                <svg class="w-10 h-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <p id="errorMessage">Ошибка</p>
+            </div>
+            <button onclick="resetApp()" class="px-6 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors text-white font-medium">
+                Попробовать снова
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="mt-12 text-slate-600 text-sm">
+        <p>Built with Vanilla JS & Tailwind</p>
+    </footer>
+
+    <!-- Логика приложения -->
+    <script>
+        // --- КОНФИГУРАЦИЯ (Из zipProcessor.ts) ---
+        const TEXT_EXTENSIONS = new Set([
+            'js', 'jsx', 'ts', 'tsx', 'json', 'css', 'scss', 'html', 'md', 'txt', 
+            'py', 'java', 'c', 'cpp', 'h', 'cs', 'go', 'rs', 'php', 'rb', 'sh', 
+            'yaml', 'yml', 'xml', 'sql', 'gitignore', 'env', 'dockerfile'
+        ]);
+
+        const IGNORE_DIRS = new Set([
+            '.git', 'node_modules', 'dist', 'build', 'coverage', '.idea', '.vscode', '__pycache__'
+        ]);
+
+        const IGNORE_FILES = new Set([
+            'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', '.DS_Store'
+        ]);
+
+        // --- УТИЛИТЫ ---
+        function isTextFile(filename) {
+            const parts = filename.split('.');
+            const ext = parts.pop()?.toLowerCase();
+            if (!ext) return false;
+            if (['dockerfile', 'makefile', 'license'].includes(parts.join('.').toLowerCase())) return true;
+            return TEXT_EXTENSIONS.has(ext);
+        }
+
+        function shouldIgnore(path) {
+            const parts = path.split('/');
+            for (const part of parts) {
+                if (IGNORE_DIRS.has(part)) return true;
+            }
+            const filename = parts[parts.length - 1];
+            if (IGNORE_FILES.has(filename)) return true;
+            return false;
+        }
+
+        function generateTreeString(paths) {
+            let output = '';
+            paths.sort().forEach(path => {
+                const depth = path.split('/').length - 1;
+                const indent = '  '.repeat(depth);
+                const name = path.split('/').pop();
+                output += `${indent}- ${name}\n`;
+            });
+            return output;
+        }
+
+        function createMarkdownContent(repoName, tree, files) {
+            let md = `# Project: ${repoName}\n\n`;
+            md += `## 📂 Project Structure\n\n\`\`\`\n${tree}\n\`\`\`\n\n`;
+            md += `## 💻 File Contents\n\n`;
+            files.forEach(f => {
+                md += `### ${f.path}\n`;
+                md += `\`\`\`${f.extension}\n`;
+                md += f.content;
+                md += `\n\`\`\`\n\n`;
+            });
+            return md;
+        }
+
+        // --- УПРАВЛЕНИЕ ИНТЕРФЕЙСОМ ---
+        const scenes = {
+            upload: document.getElementById('scene-upload'),
+            processing: document.getElementById('scene-processing'),
+            completed: document.getElementById('scene-completed'),
+            error: document.getElementById('scene-error')
+        };
+
+        function showScene(sceneName) {
+            Object.values(scenes).forEach(el => el.classList.add('hidden'));
+            scenes[sceneName].classList.remove('hidden');
+        }
+
+        function updateProgress(percent, message) {
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('statusMessage').innerText = message;
+        }
+
+        let resultUrl = null;
+
+        function resetApp() {
+            if (resultUrl) URL.revokeObjectURL(resultUrl);
+            resultUrl = null;
+            document.getElementById('fileInput').value = '';
+            showScene('upload');
+        }
+
+        // --- ОСНОВНАЯ ЛОГИКА ---
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                showScene('processing');
+                updateProgress(5, 'Чтение файла...');
+
+                const zip = new JSZip();
+                const loadedZip = await zip.loadAsync(file);
+                
+                const files = [];
+                const paths = [];
+                let totalSize = 0;
+
+                const fileEntries = Object.keys(loadedZip.files);
+                const totalFiles = fileEntries.length;
+                let processedCount = 0;
+
+                updateProgress(20, 'Фильтрация и распаковка...');
+
+                for (const filename of fileEntries) {
+                    const zipEntry = loadedZip.files[filename];
+                    processedCount++;
+
+                    // Обновляем UI каждые 10 файлов, чтобы не тормозить интерфейс
+                    if (processedCount % 10 === 0) {
+                        const progress = 20 + Math.floor((processedCount / totalFiles) * 70);
+                        updateProgress(progress, `Обработка: ${filename}`);
+                        // Даем браузеру перерисоваться
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+
+                    if (zipEntry.dir) continue;
+                    if (shouldIgnore(filename)) continue;
+
+                    if (isTextFile(filename)) {
+                        paths.push(filename);
+                        const content = await zipEntry.async('string');
+                        totalSize += content.length;
+                        
+                        files.push({
+                            path: filename,
+                            content: content,
+                            extension: filename.split('.').pop() || ''
+                        });
+                    }
+                }
+
+                updateProgress(95, 'Сборка итогового Markdown...');
+                
+                const tree = generateTreeString(paths);
+                const repoName = file.name.replace('.zip', '');
+                const markdownContent = createMarkdownContent(repoName, tree, files);
+
+                // Создаем файл для скачивания
+                const blob = new Blob([markdownContent], { type: 'text/markdown' });
+                resultUrl = URL.createObjectURL(blob);
+                const fileName = `${repoName}_packed.md`;
+
+                // Обновляем UI результатов
+                document.getElementById('resultFileName').innerText = fileName;
+                document.getElementById('resultFileCount').innerText = `📄 ${files.length} файлов`;
+                document.getElementById('resultTotalSize').innerText = `📦 ${(totalSize / 1024).toFixed(1)} KB текста`;
+                
+                const downloadBtn = document.getElementById('downloadBtn');
+                downloadBtn.href = resultUrl;
+                downloadBtn.download = fileName;
+
+                showScene('completed');
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('errorMessage').innerText = error.message || 'Неизвестная ошибка';
+                showScene('error');
+            }
+        });
+    </script>
+</body>
+</html>
