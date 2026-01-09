@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RepoPacker (Static)</title>
-    <!-- Подключаем Tailwind CSS для стилей -->
+    <!-- Подключаем Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Подключаем библиотеку JSZip для работы с архивами -->
+    <!-- Подключаем JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <!-- Шрифт Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -14,6 +14,12 @@
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Класс для активной зоны перетаскивания */
+        .drag-active {
+            border-color: #3b82f6 !important; /* blue-500 */
+            background-color: #1e293b !important; /* slate-800 darken */
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4 md:p-8">
@@ -32,14 +38,15 @@
         <!-- Сцена 1: Загрузка -->
         <div id="scene-upload" class="space-y-6">
             <div class="w-full">
-                <label class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer bg-slate-800 hover:bg-slate-750 hover:border-blue-500 transition-all duration-300">
-                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                <!-- Добавлен ID dropZone -->
+                <label id="dropZone" class="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-slate-600 rounded-lg cursor-pointer bg-slate-800 hover:bg-slate-750 hover:border-blue-500 transition-all duration-300">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                         <!-- Icon Upload -->
                         <svg class="w-12 h-12 mb-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <p class="mb-2 text-sm text-slate-300">
-                            <span class="font-semibold">Кликните</span> или перетащите файл
+                            <span class="font-semibold">Кликните</span> или перетащите файл сюда
                         </p>
                         <p class="text-xs text-slate-500">ZIP архив (GitHub Repo)</p>
                     </div>
@@ -123,7 +130,7 @@
 
     <!-- Логика приложения -->
     <script>
-        // --- КОНФИГУРАЦИЯ (Из zipProcessor.ts) ---
+        // --- КОНФИГУРАЦИЯ ---
         const TEXT_EXTENSIONS = new Set([
             'js', 'jsx', 'ts', 'tsx', 'json', 'css', 'scss', 'html', 'md', 'txt', 
             'py', 'java', 'c', 'cpp', 'h', 'cs', 'go', 'rs', 'php', 'rb', 'sh', 
@@ -208,10 +215,53 @@
             showScene('upload');
         }
 
-        // --- ОСНОВНАЯ ЛОГИКА ---
-        document.getElementById('fileInput').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        // --- DRAG AND DROP ЛОГИКА ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        // Отменяем стандартное поведение браузера для всех событий драга
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Подсветка зоны при наведении
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            dropZone.classList.add('drag-active');
+        }
+
+        function unhighlight(e) {
+            dropZone.classList.remove('drag-active');
+        }
+
+        // Обработка бросания файла (DROP)
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFiles(files);
+        });
+
+        // Обработка клика (CHANGE)
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // --- ЕДИНАЯ ФУНКЦИЯ ЗАПУСКА ---
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
+            const file = files[0];
 
             try {
                 showScene('processing');
@@ -220,7 +270,7 @@
                 const zip = new JSZip();
                 const loadedZip = await zip.loadAsync(file);
                 
-                const files = [];
+                const processedFiles = [];
                 const paths = [];
                 let totalSize = 0;
 
@@ -234,11 +284,10 @@
                     const zipEntry = loadedZip.files[filename];
                     processedCount++;
 
-                    // Обновляем UI каждые 10 файлов, чтобы не тормозить интерфейс
+                    // Обновляем UI каждые 10 файлов
                     if (processedCount % 10 === 0) {
                         const progress = 20 + Math.floor((processedCount / totalFiles) * 70);
                         updateProgress(progress, `Обработка: ${filename}`);
-                        // Даем браузеру перерисоваться
                         await new Promise(r => setTimeout(r, 0));
                     }
 
@@ -250,7 +299,7 @@
                         const content = await zipEntry.async('string');
                         totalSize += content.length;
                         
-                        files.push({
+                        processedFiles.push({
                             path: filename,
                             content: content,
                             extension: filename.split('.').pop() || ''
@@ -262,7 +311,7 @@
                 
                 const tree = generateTreeString(paths);
                 const repoName = file.name.replace('.zip', '');
-                const markdownContent = createMarkdownContent(repoName, tree, files);
+                const markdownContent = createMarkdownContent(repoName, tree, processedFiles);
 
                 // Создаем файл для скачивания
                 const blob = new Blob([markdownContent], { type: 'text/markdown' });
@@ -271,7 +320,7 @@
 
                 // Обновляем UI результатов
                 document.getElementById('resultFileName').innerText = fileName;
-                document.getElementById('resultFileCount').innerText = `📄 ${files.length} файлов`;
+                document.getElementById('resultFileCount').innerText = `📄 ${processedFiles.length} файлов`;
                 document.getElementById('resultTotalSize').innerText = `📦 ${(totalSize / 1024).toFixed(1)} KB текста`;
                 
                 const downloadBtn = document.getElementById('downloadBtn');
@@ -285,7 +334,7 @@
                 document.getElementById('errorMessage').innerText = error.message || 'Неизвестная ошибка';
                 showScene('error');
             }
-        });
+        }
     </script>
 </body>
 </html>
