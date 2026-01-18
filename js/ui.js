@@ -33,12 +33,12 @@ export function updateResultUI(fileName, count, sizeInBytes, url) {
 export function toggleDragActive(isActive) {
     const dropZone = document.getElementById('dropZone');
 
-    // Functional active toggle
+    // Functional active toggle with Dark Mode support
     if (isActive) {
-        dropZone.classList.add('border-[#FF6B00]', 'bg-[#FFF8F2]', 'scale-[1.02]');
-        dropZone.classList.remove('border-[#D6D3C9]');
+        dropZone.classList.add('border-[#FF6B00]', 'bg-[#FFF8F2]', 'dark:bg-[#FF6B00]/20', 'scale-[1.02]');
+        dropZone.classList.remove('border-[#D6D3C9]', 'dark:border-[#444]');
     } else {
-        dropZone.classList.remove('border-[#FF6B00]', 'bg-[#FFF8F2]', 'scale-[1.02]');
-        dropZone.classList.add('border-[#D6D3C9]');
+        dropZone.classList.remove('border-[#FF6B00]', 'bg-[#FFF8F2]', 'dark:bg-[#FF6B00]/20', 'scale-[1.02]');
+        dropZone.classList.add('border-[#D6D3C9]', 'dark:border-[#444]');
     }
 }
