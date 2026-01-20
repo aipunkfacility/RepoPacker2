@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- JSZip нужен глобально, так как у него нет ES-модуля на CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Phosphor Icons (Duotone) -->
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
 
     <!-- Social Preview -->
@@ -77,6 +79,37 @@
             border-color: #3b82f6 !important;
             background-color: #1e293b !important;
         }
+
+        /* Focus visible for accessibility */
+        select:focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid #FF6B00;
+            outline-offset: 2px;
+        }
+
+        /* Hover effects for buttons */
+        button,
+        a {
+            transition: transform 0.15s ease;
+        }
+
+        button:hover,
+        a:hover {
+            transform: scale(1.02);
+        }
+
+        button:active,
+        a:active {
+            transform: scale(0.98);
+        }
+
+        /* Hide on mobile */
+        @media (max-width: 768px) {
+            .hide-mobile {
+                display: none;
+            }
+        }
     </style>
 </head>
 
@@ -91,22 +124,14 @@
 
     <!-- Top Controls -->
     <div class="fixed top-6 right-6 flex items-center gap-3 z-50">
-        <button id="langToggle"
+        <button id="langToggle" aria-label="Сменить язык"
             class="w-10 h-10 rounded-full bg-white dark:bg-[#222] border border-[#EBE9E1] dark:border-[#333] text-[#7D7870] dark:text-[#aaa] font-bold text-xs hover:border-[#FF6B00] dark:hover:border-[#FF6B00] transition-colors shadow-sm">
-            EN
+            RU
         </button>
-        <button id="themeToggle"
+        <button id="themeToggle" aria-label="Сменить тему"
             class="w-10 h-10 rounded-full bg-white dark:bg-[#222] border border-[#EBE9E1] dark:border-[#333] text-[#7D7870] dark:text-[#aaa] flex items-center justify-center hover:border-[#FF6B00] dark:hover:border-[#FF6B00] transition-colors shadow-sm">
-            <!-- Sun Icon -->
-            <svg class="hidden dark:block w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            <!-- Moon Icon -->
-            <svg class="block dark:hidden w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
+            <i class="ph-duotone ph-sun hidden dark:block text-xl"></i>
+            <i class="ph-duotone ph-moon block dark:hidden text-xl"></i>
         </button>
     </div>
 
@@ -117,7 +142,7 @@
         <div
             class="p-10 flex flex-col justify-center bg-[#FAF9F5] dark:bg-[#222] border-b md:border-b-0 md:border-r border-[#EBE9E1] dark:border-[#333] transition-colors duration-300">
             <div class="mb-auto">
-                <div class="flex items-center gap-3 mb-8">
+                <div class="flex items-center gap-3 mb-6">
                     <div
                         class="w-10 h-10 rounded-xl bg-[#FF6B00] flex items-center justify-center text-white shadow-md shadow-[#FF6B00]/10 shrink-0">
                         <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -128,53 +153,103 @@
                     <h1 class="text-xl font-bold tracking-tight text-[#2D2A26] dark:text-white">RepoPacker</h1>
                 </div>
 
-                <h2 data-lang-key="title" class="text-2xl font-bold text-[#2D2A26] dark:text-white leading-tight mb-4">
-                    Конвертер репозиториев <br>для LLM
-                </h2>
-                <p data-lang-key="desc" class="text-base text-[#7D7870] dark:text-[#999] leading-relaxed mb-6 max-w-sm">
-                    Инструмент для подготовки контекста. Преобразует ZIP-архив с кодом в один Markdown-файл с деревом
-                    проекта и содержимым.
-                </p>
+                <!-- Mode Toggle -->
+                <div class="flex bg-[#EBE9E1] dark:bg-[#333] rounded-xl p-1 mb-8">
+                    <button id="modePackBtn"
+                        class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all bg-white dark:bg-[#1A1A1A] text-[#2D2A26] dark:text-white shadow-sm flex items-center justify-center gap-2">
+                        <i class="ph-duotone ph-package text-lg"></i>
+                        <span data-lang-key="mode_pack">Pack</span>
+                    </button>
+                    <button id="modeUnpackBtn"
+                        class="flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all text-[#7D7870] dark:text-[#888] flex items-center justify-center gap-2">
+                        <i class="ph-duotone ph-folder-open text-lg"></i>
+                        <span data-lang-key="mode_unpack">Unpack</span>
+                    </button>
+                </div>
 
-                <div class="mb-8">
-                    <label data-lang-key="token_limit" for="tokenLimitSelect"
-                        class="block text-xs font-bold text-[#5C5850] dark:text-[#888] uppercase tracking-wider mb-2">Разбиение
-                        на части</label>
-                    <div class="relative">
-                        <select id="tokenLimitSelect"
-                            class="w-full bg-white dark:bg-[#333] border border-[#D6D3C9] dark:border-[#444] text-[#2D2A26] dark:text-white text-sm rounded-lg focus:ring-[#FF6B00] focus:border-[#FF6B00] block w-full p-2.5 appearance-none cursor-pointer outline-none">
-                            <option value="0" data-lang-key="opt_no_limit">Одним файлом (без лимитов)</option>
-                            <option value="32000">32k tokens (GPT-4 32k)</option>
-                            <option value="128000" selected>128k tokens (GPT-4o / Claude)</option>
-                            <option value="200000">200k tokens (Claude 3 Opus)</option>
-                        </select>
-                        <div
-                            class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#7D7870]">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 9l-7 7-7-7" />
-                            </svg>
+                <h2 data-lang-key="title" class="text-2xl font-bold text-[#2D2A26] dark:text-white leading-tight mb-4">
+                    Конвертер архивов <br>для LLM
+                </h2>
+                <p data-lang-key="desc"
+                    class="text-base text-[#5C5850] dark:text-[#999] leading-relaxed mb-6 max-w-sm hide-mobile">
+                    Инструмент для подготовки контекста. Преобразует любой ZIP-архив с текстом в один Markdown-файл с
+                    сохранением структуры.
+                </p>
+                <!-- Settings Toggle -->
+                <div class="mb-6">
+                    <button id="settingsToggle" type="button"
+                        class="flex items-center gap-2 text-sm font-medium text-[#5C5850] dark:text-[#AAA] hover:text-[#FF6B00] dark:hover:text-[#FF6B00] transition-colors">
+                        <i class="ph-duotone ph-gear text-lg"></i>
+                        <span data-lang-key="settings">Настройки</span>
+                        <i id="settingsChevron" class="ph ph-caret-down text-xs transition-transform duration-200"></i>
+                    </button>
+                </div>
+
+                <!-- Collapsible Settings -->
+                <div id="settingsPanel" class="hidden mb-6 space-y-4 animate-fade-in">
+                    <div>
+                        <label data-lang-key="token_limit" for="tokenLimitSelect"
+                            class="block text-xs font-bold text-[#5C5850] dark:text-[#888] uppercase tracking-wider mb-2">Разбиение
+                            на части</label>
+                        <div class="relative">
+                            <select id="tokenLimitSelect"
+                                class="w-full bg-white dark:bg-[#333] border border-[#D6D3C9] dark:border-[#444] text-[#2D2A26] dark:text-white text-sm rounded-lg focus:ring-[#FF6B00] focus:border-[#FF6B00] block w-full p-2.5 appearance-none cursor-pointer outline-none">
+                                <option value="0" data-lang-key="opt_no_limit">Одним файлом (без лимитов)</option>
+                                <option value="32000">32k tokens (GPT-4 32k)</option>
+                                <option value="128000" selected>128k tokens (GPT-4o / Claude)</option>
+                                <option value="200000">200k tokens (Claude 3 Opus)</option>
+                            </select>
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#7D7870]">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label data-lang-key="prompt_template" for="promptTemplateSelect"
+                            class="block text-xs font-bold text-[#5C5850] dark:text-[#888] uppercase tracking-wider mb-2">Шаблон
+                            промпта</label>
+                        <div class="relative">
+                            <select id="promptTemplateSelect"
+                                class="w-full bg-white dark:bg-[#333] border border-[#D6D3C9] dark:border-[#444] text-[#2D2A26] dark:text-white text-sm rounded-lg focus:ring-[#FF6B00] focus:border-[#FF6B00] block w-full p-2.5 appearance-none cursor-pointer outline-none">
+                                <!-- Options populated dynamically -->
+                            </select>
+                            <div
+                                class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#7D7870]">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <ul class="space-y-3 text-sm font-medium text-[#5C5850] dark:text-[#AAA]">
+            <ul class="space-y-3 text-sm font-medium text-[#5C5850] dark:text-[#AAA] hide-mobile">
                 <li class="flex items-center gap-3">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#FF6B00]"></div>
+                    <i class="ph-duotone ph-hash text-[#FF6B00]"></i>
                     <span data-lang-key="feat_tokens">Подсчет токенов</span>
                 </li>
                 <li class="flex items-center gap-3">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#FF6B00]"></div>
+                    <i class="ph-duotone ph-tree-structure text-[#FF6B00]"></i>
                     <span data-lang-key="feat_tree">Дерево файлов с навигацией</span>
                 </li>
                 <li class="flex items-center gap-3">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#FF6B00]"></div>
+                    <i class="ph-duotone ph-funnel text-[#FF6B00]"></i>
                     <span data-lang-key="feat_filter">Фильтрация бинарников</span>
                 </li>
                 <li class="flex items-center gap-3">
-                    <div class="w-1.5 h-1.5 rounded-full bg-[#FF6B00]"></div>
+                    <i class="ph-duotone ph-code text-[#FF6B00]"></i>
                     <span data-lang-key="feat_xml">XML-теги для Claude/GPT</span>
+                </li>
+                <li class="flex items-center gap-3 pt-4 border-t border-[#EBE9E1] dark:border-[#333]">
+                    <span data-lang-key="limits_info" class="text-xs text-[#9E9A91] dark:text-[#666]">Лимиты: до 500
+                        файлов, макс 50 MB</span>
                 </li>
             </ul>
         </div>
@@ -184,26 +259,113 @@
             class="p-10 flex flex-col justify-center bg-white dark:bg-[#1A1A1A] relative min-h-[500px] transition-colors duration-300">
 
             <!-- Scene 1: Upload -->
-            <div id="scene-upload" class="animate-fade-in w-full h-full flex flex-col justify-center">
-                <label id="dropZone"
-                    class="group relative flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-[#D6D3C9] dark:border-[#444] rounded-2xl cursor-pointer hover:border-[#FF6B00] dark:hover:border-[#FF6B00] hover:bg-[#FFF8F2] dark:hover:bg-[#FF6B00]/10 transition-all duration-200">
-                    <div
-                        class="flex flex-col items-center justify-center p-6 text-center transition-transform duration-200 group-hover:scale-105">
+            <div id="scene-upload"
+                class="animate-fade-in w-full h-full flex flex-col justify-center items-center gap-6">
+                <p data-lang-key="drop_title" class="text-lg font-bold text-[#2D2A26] dark:text-white mb-2">Выберите
+                    источник</p>
+
+                <div class="flex gap-4 w-full max-w-sm">
+                    <!-- Folder Button -->
+                    <label
+                        class="flex-1 group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#D6D3C9] dark:border-[#444] rounded-2xl cursor-pointer hover:border-[#FF6B00] dark:hover:border-[#FF6B00] hover:bg-[#FFF8F2] dark:hover:bg-[#FF6B00]/10 transition-all duration-200">
                         <div
-                            class="w-16 h-16 bg-[#F5F4EF] dark:bg-[#333] rounded-full flex items-center justify-center text-[#9E9A91] dark:text-[#666] group-hover:text-[#FF6B00] group-hover:bg-white dark:group-hover:bg-[#222] transition-colors mb-4">
-                            <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            class="w-12 h-12 bg-[#F5F4EF] dark:bg-[#333] rounded-full flex items-center justify-center text-[#9E9A91] dark:text-[#666] group-hover:text-[#FF6B00] transition-colors mb-3">
+                            <i class="ph-duotone ph-folder-open text-2xl"></i>
                         </div>
-                        <p data-lang-key="drop_title" class="text-lg font-bold text-[#2D2A26] dark:text-white mb-1">
-                            Загрузить .zip</p>
-                        <p data-lang-key="drop_desc" class="text-sm text-[#9E9A91] dark:text-[#777]">Перетащите файл
-                            сюда</p>
+                        <span data-lang-key="btn_folder"
+                            class="text-sm font-semibold text-[#2D2A26] dark:text-white">Папка</span>
+                        <input type="file" id="folderInput" class="hidden" webkitdirectory directory multiple />
+                    </label>
+
+                    <!-- ZIP Button -->
+                    <label id="dropZone"
+                        class="flex-1 group relative flex flex-col items-center justify-center p-6 border-2 border-dashed border-[#D6D3C9] dark:border-[#444] rounded-2xl cursor-pointer hover:border-[#FF6B00] dark:hover:border-[#FF6B00] hover:bg-[#FFF8F2] dark:hover:bg-[#FF6B00]/10 transition-all duration-200">
+                        <div
+                            class="w-12 h-12 bg-[#F5F4EF] dark:bg-[#333] rounded-full flex items-center justify-center text-[#9E9A91] dark:text-[#666] group-hover:text-[#FF6B00] transition-colors mb-3">
+                            <i class="ph-duotone ph-file-zip text-2xl"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-[#2D2A26] dark:text-white">ZIP</span>
+                        <input type="file" id="fileInput" class="hidden" accept=".zip" />
+                    </label>
+                </div>
+
+                <p data-lang-key="drop_desc" class="text-xs text-[#9E9A91] dark:text-[#777]">Или перетащите архив сюда
+                </p>
+            </div>
+
+            <!-- Scene 1b: Upload Unpack (MD file) -->
+            <div id="scene-upload-unpack"
+                class="hidden animate-fade-in w-full h-full flex flex-col justify-center items-center gap-6">
+                <p data-lang-key="unpack_title" class="text-lg font-bold text-[#2D2A26] dark:text-white mb-2">Загрузите
+                    .md файл</p>
+
+                <label id="dropZoneUnpack"
+                    class="w-full max-w-sm group relative flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#D6D3C9] dark:border-[#444] rounded-2xl cursor-pointer hover:border-[#FF6B00] dark:hover:border-[#FF6B00] hover:bg-[#FFF8F2] dark:hover:bg-[#FF6B00]/10 transition-all duration-200">
+                    <div
+                        class="w-14 h-14 bg-[#F5F4EF] dark:bg-[#333] rounded-full flex items-center justify-center text-[#9E9A91] dark:text-[#666] group-hover:text-[#FF6B00] transition-colors mb-4">
+                        <i class="ph-duotone ph-file-md text-3xl"></i>
                     </div>
-                    <input type="file" id="fileInput" class="hidden" accept=".zip" />
+                    <span class="text-sm font-semibold text-[#2D2A26] dark:text-white mb-1">.md / .txt</span>
+                    <span data-lang-key="unpack_desc" class="text-xs text-[#9E9A91] dark:text-[#777]">Перетащите или
+                        выберите файл</span>
+                    <input type="file" id="mdFileInput" class="hidden" accept=".md,.txt,.markdown" />
                 </label>
             </div>
+
+            <!-- Scene 2: Preview (NEW) -->
+            <div id="scene-preview" class="hidden animate-fade-in w-full h-full flex flex-col justify-center">
+                <div class="text-center mb-6">
+                    <div
+                        class="w-14 h-14 bg-[#FF6B00]/10 dark:bg-[#FF6B00]/20 rounded-full flex items-center justify-center mx-auto mb-4 text-[#FF6B00]">
+                        <i class="ph-duotone ph-package text-3xl"></i>
+                    </div>
+                    <h3 id="previewName" class="text-xl font-bold text-[#2D2A26] dark:text-white mb-1">my-project</h3>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 gap-4 mb-6 max-w-xs mx-auto w-full">
+                    <div class="bg-[#F5F4EF] dark:bg-[#333] rounded-xl p-4 text-center">
+                        <div class="text-[10px] text-[#9E9A91] dark:text-[#777] uppercase tracking-wider font-bold mb-1"
+                            data-lang-key="stat_files">Файлов</div>
+                        <div id="previewFileCount" class="text-2xl font-bold text-[#2D2A26] dark:text-white">0</div>
+                    </div>
+                    <div class="bg-[#F5F4EF] dark:bg-[#333] rounded-xl p-4 text-center">
+                        <div class="text-[10px] text-[#9E9A91] dark:text-[#777] uppercase tracking-wider font-bold mb-1"
+                            data-lang-key="stat_folders">Папок</div>
+                        <div id="previewFolderCount" class="text-2xl font-bold text-[#2D2A26] dark:text-white">0</div>
+                    </div>
+                    <div class="bg-[#F5F4EF] dark:bg-[#333] rounded-xl p-4 text-center">
+                        <div class="text-[10px] text-[#9E9A91] dark:text-[#777] uppercase tracking-wider font-bold mb-1"
+                            data-lang-key="stat_size">Размер</div>
+                        <div id="previewSize" class="text-2xl font-bold text-[#2D2A26] dark:text-white">0 KB</div>
+                    </div>
+                    <div class="bg-[#F5F4EF] dark:bg-[#333] rounded-xl p-4 text-center">
+                        <div class="text-[10px] text-[#9E9A91] dark:text-[#777] uppercase tracking-wider font-bold mb-1"
+                            data-lang-key="stat_tokens">Токенов</div>
+                        <div id="previewTokens" class="text-2xl font-bold text-[#2D2A26] dark:text-white">~0</div>
+                    </div>
+                </div>
+
+                <!-- Excluded Info -->
+                <div id="previewExcluded"
+                    class="text-xs text-[#9E9A91] dark:text-[#777] mb-6 text-center max-w-xs mx-auto">
+                    <span data-lang-key="preview_excluded">Исключено:</span>
+                    <span id="previewExcludedText">node_modules/, .git/, 5 бинарных</span>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 max-w-xs mx-auto w-full">
+                    <button id="cancelPreviewBtn"
+                        class="flex-1 py-3 border border-[#D6D3C9] dark:border-[#444] rounded-xl text-sm font-medium text-[#4A4741] dark:text-[#ccc] hover:bg-[#FAF9F5] dark:hover:bg-[#333] transition-colors">
+                        <span data-lang-key="btn_cancel">Отмена</span>
+                    </button>
+                    <button id="packBtn"
+                        class="flex-1 py-3 bg-[#FF6B00] hover:bg-[#E55F00] text-white text-sm font-semibold rounded-xl transition-all shadow-md hover:shadow-lg">
+                        <span data-lang-key="btn_pack">Упаковать</span>
+                    </button>
+                </div>
+            </div>
+
 
             <!-- Scene 2: Processing -->
             <div id="scene-processing"
@@ -215,7 +377,8 @@
                     Обработка...</h3>
                 <p id="statusMessage" class="text-sm text-[#7D7870] dark:text-[#999] mb-6">Чтение структуры</p>
                 <div class="w-48 h-1.5 bg-[#F5F4EF] dark:bg-[#333] rounded-full overflow-hidden">
-                    <div id="progressBar" class="bg-[#FF6B00] h-full transition-all duration-300" style="width: 0%">
+                    <div id="progressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                        class="bg-[#FF6B00] h-full transition-all duration-300" style="width: 0%">
                     </div>
                 </div>
             </div>
@@ -225,9 +388,7 @@
                 class="hidden w-full h-full flex flex-col items-center justify-center text-center animate-fade-in">
                 <div
                     class="w-16 h-16 bg-[#0FAF6B] rounded-full flex items-center justify-center mb-6 text-white shadow-lg shadow-[#0FAF6B]/20">
-                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <i class="ph-duotone ph-check-circle text-4xl"></i>
                 </div>
 
                 <h2 data-lang-key="done_title" class="text-2xl font-bold text-[#2D2A26] dark:text-white mb-2">Готово
@@ -252,16 +413,20 @@
                     </div>
                 </div>
 
-                <div class="w-full max-w-xs space-y-3">
+                <div class="flex gap-3 w-full max-w-xs">
+                    <button id="copyBtn"
+                        class="flex-1 py-3 border border-[#D6D3C9] dark:border-[#444] rounded-xl text-base font-semibold text-[#4A4741] dark:text-[#ccc] hover:bg-[#FAF9F5] dark:hover:bg-[#333] transition-colors relative">
+                        <span data-lang-key="btn_copy">Копировать</span>
+                    </button>
                     <a id="downloadBtn" href="#" download=""
-                        class="flex items-center justify-center w-full py-3 bg-[#FF6B00] hover:bg-[#E55F00] text-white text-base font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                        class="flex-1 flex items-center justify-center py-3 bg-[#FF6B00] hover:bg-[#E55F00] text-white text-base font-semibold rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5">
                         <span data-lang-key="btn_download">Скачать</span>
                     </a>
-                    <button id="resetBtn"
-                        class="flex items-center justify-center w-full py-2.5 text-sm text-[#7D7870] dark:text-[#999] hover:text-[#FF6B00] dark:hover:text-[#FF6B00] font-medium transition-colors">
-                        <span data-lang-key="btn_reset">Начать заново</span>
-                    </button>
                 </div>
+                <button id="resetBtn"
+                    class="mt-3 flex items-center justify-center w-full max-w-xs py-2.5 text-sm text-[#7D7870] dark:text-[#999] hover:text-[#FF6B00] dark:hover:text-[#FF6B00] font-medium transition-colors">
+                    <span data-lang-key="btn_reset">Начать заново</span>
+                </button>
             </div>
 
             <!-- Scene 4: Error -->
@@ -269,10 +434,7 @@
                 class="hidden w-full h-full flex flex-col items-center justify-center text-center animate-fade-in">
                 <div
                     class="w-16 h-16 bg-red-50 dark:bg-red-900/20 text-[#EB4D4D] rounded-full flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                    <i class="ph-duotone ph-warning-circle text-4xl"></i>
                 </div>
                 <h3 data-lang-key="err_title" class="text-lg font-bold text-[#2D2A26] dark:text-white mb-2">Ошибка</h3>
                 <p id="errorMessage" class="text-sm text-[#7D7870] dark:text-[#999] mb-6 max-w-xs mx-auto">Не удалось
@@ -286,49 +448,77 @@
         </div>
     </main>
 
-    <script type="module" src="./js/main.js?v=11"></script>
+    <script type="module" src="./js/main.js?v=13"></script>
     <script>
         // Language & Theme Logic
         const i18n = {
             ru: {
-                title: "Конвертер репозиториев <br>для LLM",
-                desc: "Инструмент для подготовки контекста. Преобразует ZIP-архив с кодом в один Markdown-файл с деревом проекта и содержимым.",
+                title: "Конвертер архивов <br>для LLM",
+                desc: "Инструмент для подготовки контекста. Преобразует любой ZIP-архив с текстом в один Markdown-файл с сохранением структуры.",
                 token_limit: "Разбиение на части",
                 opt_no_limit: "Одним файлом (без лимитов)",
                 feat_tokens: "Подсчет токенов",
                 feat_tree: "Дерево файлов с навигацией",
                 feat_filter: "Фильтрация бинарников",
                 feat_xml: "XML-теги для Claude/GPT",
-                drop_title: "Загрузить .zip",
-                drop_desc: "Перетащите файл сюда",
+                mode_pack: "Pack",
+                mode_unpack: "Unpack",
+                drop_title: "Выберите источник",
+                drop_desc: "Или перетащите архив сюда",
+                unpack_title: "Загрузите .md файл",
+                unpack_desc: "Перетащите или выберите файл",
+                btn_folder: "Папка",
                 proc_title: "Обработка...",
                 done_title: "Готово",
                 stat_files: "Файлов",
+                stat_folders: "Папок",
                 stat_size: "Размер",
+                stat_tokens: "Токенов",
+                preview_excluded: "Исключено:",
+                btn_cancel: "Отмена",
+                btn_pack: "Упаковать",
+                btn_copy: "Копировать",
                 btn_download: "Скачать",
                 btn_reset: "Начать заново",
                 err_title: "Ошибка",
-                btn_retry: "Попробовать снова"
+                btn_retry: "Попробовать снова",
+                limits_info: "Лимиты: до 500 файлов, макс 50 MB",
+                prompt_template: "Шаблон промпта",
+                settings: "Настройки"
             },
             en: {
-                title: "Repository Conversion <br>for LLM",
-                desc: "Prepare your code context. Convert ZIP archive into a single Markdown file with project tree and content.",
+                title: "Archive Conversion <br>for LLM",
+                desc: "Prepare context for AI. Convert any ZIP archive with text files into a single structured Markdown file.",
                 token_limit: "Token Splitting",
                 opt_no_limit: "Single file (No limit)",
                 feat_tokens: "Token estimation",
                 feat_tree: "File tree with navigation",
                 feat_filter: "Binary file filtering",
                 feat_xml: "XML tags for Claude/GPT",
-                drop_title: "Upload .zip",
-                drop_desc: "Drag & drop file here",
+                mode_pack: "Pack",
+                mode_unpack: "Unpack",
+                drop_title: "Choose source",
+                drop_desc: "Or drag & drop archive here",
+                unpack_title: "Upload .md file",
+                unpack_desc: "Drag & drop or select file",
+                btn_folder: "Folder",
                 proc_title: "Processing...",
                 done_title: "Done",
                 stat_files: "Files",
+                stat_folders: "Folders",
                 stat_size: "Size",
+                stat_tokens: "Tokens",
+                preview_excluded: "Excluded:",
+                btn_cancel: "Cancel",
+                btn_pack: "Pack",
+                btn_copy: "Copy",
                 btn_download: "Download",
                 btn_reset: "Start Over",
                 err_title: "Error",
-                btn_retry: "Try Again"
+                btn_retry: "Try Again",
+                limits_info: "Limits: up to 500 files, max 50 MB",
+                prompt_template: "Prompt Template",
+                settings: "Settings"
             }
         };
 
@@ -371,6 +561,57 @@
         } else {
             html.classList.remove('dark');
         }
+
+        // Init Prompt Templates Select
+        function initPromptTemplates() {
+            const select = document.getElementById('promptTemplateSelect');
+            if (!select || !window.PROMPT_TEMPLATES) return;
+
+            select.innerHTML = '';
+            window.PROMPT_TEMPLATES.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = currentLang === 'ru' ? t.labelRu : t.labelEn;
+                select.appendChild(opt);
+            });
+        }
+
+        // Update templates on language change
+        function updatePromptTemplateLabels() {
+            const select = document.getElementById('promptTemplateSelect');
+            if (!select || !window.PROMPT_TEMPLATES) return;
+
+            const options = select.querySelectorAll('option');
+            options.forEach((opt, i) => {
+                if (window.PROMPT_TEMPLATES[i]) {
+                    opt.textContent = currentLang === 'ru'
+                        ? window.PROMPT_TEMPLATES[i].labelRu
+                        : window.PROMPT_TEMPLATES[i].labelEn;
+                }
+            });
+        }
+
+        // Patch updateTexts to also update templates
+        const originalUpdateTexts = updateTexts;
+        updateTexts = function () {
+            originalUpdateTexts();
+            updatePromptTemplateLabels();
+        };
+
+        // Init templates after main.js loads them
+        window.addEventListener('load', () => {
+            setTimeout(initPromptTemplates, 100);
+        });
+
+        // Settings Toggle
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const settingsChevron = document.getElementById('settingsChevron');
+
+        settingsToggle?.addEventListener('click', () => {
+            settingsPanel?.classList.toggle('hidden');
+            settingsChevron?.classList.toggle('rotate-180');
+        });
 
     </script>
 </body>
